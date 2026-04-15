@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntelliStudy • AI Learning Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --tw-color-primary: #00d4ff;
+        }
+        
+        * {
+            transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+        
+        .app-container {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .logo-font {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .chat-message {
+            max-width: 80%;
+            padding: 14px 20px;
+            border-radius: 20px;
+        }
+        
+        .user-message {
+            background-color: #00d4ff;
+            color: #000;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .bot-message {
+            background-color: #1f2937;
+            border-bottom-left-radius: 4px;
+        }
+
+        .main-content {
+            animation: fadeIn 0.3s ease forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .sidebar-icon {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .sidebar-icon:hover {
+            transform: scale(1.1);
+        }
+        
+        .iframe-container {
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+        }
+    </style>
+</head>
+<body class="app-container bg-zinc-950 text-white min-h-screen flex flex-col">
+    <!-- Top Navbar -->
+    <nav class="bg-zinc-900 border-b border-zinc-800 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
+        <div class="flex items-center gap-x-3">
+            <!-- Logo -->
+            <div class="w-9 h-9 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-inner">📚</div>
+            <h1 class="logo-font text-3xl tracking-tighter">IntelliStudy</h1>
+            <span class="text-xs font-medium px-3 py-1 bg-cyan-500/10 text-cyan-400 rounded-3xl border border-cyan-400/30">AI POWERED</span>
+        </div>
+        
+        <div class="flex items-center gap-x-8 text-sm font-medium">
+            <div onclick="switchTab(0)" id="nav-tab-0" 
+                 class="nav-tab flex items-center gap-x-2 cursor-pointer px-5 py-2 rounded-3xl hover:bg-zinc-800 active-tab">
+                💬 Ask Questions
+            </div>
+            <div onclick="switchTab(1)" id="nav-tab-1" 
+                 class="nav-tab flex items-center gap-x-2 cursor-pointer px-5 py-2 rounded-3xl hover:bg-zinc-800">
+                🌐 Open Web
+            </div>
+            <div onclick="switchTab(2)" id="nav-tab-2" 
+                 class="nav-tab flex items-center gap-x-2 cursor-pointer px-5 py-2 rounded-3xl hover:bg-zinc-800">
+                📄 Document Lab
+            </div>
+        </div>
+
+        <div class="flex items-center gap-x-4">
+            <!-- Voice command hint -->
+            <div class="flex items-center gap-x-2 text-xs bg-zinc-800 text-cyan-400 px-4 h-9 rounded-3xl border border-cyan-400/20">
+                <div class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                Say "open youtube.com" in chat
+            </div>
+            
+            <!-- User -->
+            <div class="flex items-center gap-x-3">
+                <div class="text-right">
+                    <p class="text-sm font-semibold">Jayant</p>
+                    <p class="text-xs text-zinc-500">Agra, UP</p>
+                </div>
+                <div class="w-9 h-9 bg-gradient-to-br from-purple-400 to-pink-400 rounded-2xl flex items-center justify-center text-xl">👨‍🚀</div>
+            </div>
+            
+            <!-- Clear session button -->
+            <button onclick="resetApp()" 
+                    class="px-4 py-2 text-xs font-medium bg-zinc-800 hover:bg-red-500/10 hover:text-red-400 rounded-2xl flex items-center gap-x-2">
+                <span>⟳</span>
+                <span>Reset</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Sidebar -->
+        <div class="w-72 bg-zinc-900 border-r border-zinc-800 p-6 flex flex-col">
+            <div class="mb-8">
+                <h2 class="text-cyan-400 text-sm font-semibold tracking-widest mb-3">MODES</h2>
+                <div onclick="switchTab(0)" class="sidebar-item flex items-center gap-x-4 px-5 py-4 rounded-3xl hover:bg-zinc-800 mb-2 cursor-pointer" id="sidebar-0">
+                    <span class="text-2xl">💬</span>
+                    <div>
+                        <p class="font-semibold">Ask Me Anything</p>
+                        <p class="text-xs text-zinc-400">Tutor asks you questions</p>
+                    </div>
+                </div>
+                <div onclick="switchTab(1)" class="sidebar-item flex items-center gap-x-4 px-5 py-4 rounded-3xl hover:bg-zinc-800 mb-2 cursor-pointer" id="sidebar-1">
+                    <span class="text-2xl">🌐</span>
+                    <div>
+                        <p class="font-semibold">Live Web Browser</p>
+                        <p class="text-xs text-zinc-400">Voice + URL commands</p>
+                    </div>
+                </div>
+                <div onclick="switchTab(2)" class="sidebar-item flex items-center gap-x-4 px-5 py-4 rounded-3xl hover:bg-zinc-800 cursor-pointer" id="sidebar-2">
+                    <span class="text-2xl">📄</span>
+                    <div>
+                        <p class="font-semibold">Document Lab</p>
+                        <p class="text-xs text-zinc-400">Upload • Notes • Tests</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current document status -->
+            <div class="mt-auto bg-zinc-800 rounded-3xl p-5 text-xs">
+                <p class="font-medium mb-2 flex items-center gap-x-2">
+                    📌 CURRENT DOCUMENT
+                    <span id="doc-status" class="ml-auto px-3 py-px text-[10px] bg-emerald-400 text-black rounded-2xl">None uploaded</span>
+                </p>
+                <p id="doc-name" class="text-zinc-400 text-sm line-clamp-2">No document loaded yet</p>
+                <button onclick="switchTab(2)" 
+                        class="mt-4 w-full text-xs py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-semibold rounded-2xl flex items-center justify-center gap-x-2">
+                    <span>📤</span> UPLOAD NEW DOC
+                </button>
+            </div>
+
+            <!-- Quick tips -->
+            <div class="mt-6 text-[10px] text-zinc-500 space-y-1">
+                <div class="flex justify-between"><span>Voice tip:</span> <span class="text-cyan-300">"open google.com"</span></div>
+                <div class="flex justify-between"><span>In chat:</span> <span class="text-cyan-300">Ask me a question</span></div>
+                <div class="flex justify-between"><span>Doc test levels:</span> <span class="text-cyan-300">Beginner / Advanced</span></div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+
+            <!-- TAB 0: CHAT / Ask Questions -->
+            <div id="tab-0" class="main-content flex-1 flex flex-col p-8">
+                <div class="flex-1 bg-zinc-900 rounded-3xl p-6 shadow-2xl flex flex-col">
+                    <!-- Chat header -->
+                    <div class="flex items-center justify-between mb-6 border-b border-zinc-700 pb-4">
+                        <div class="flex items-center gap-x-3">
+                            <div class="text-3xl">🤖</div>
+                            <div>
+                                <h2 class="text-2xl font-semibold">Ask Questions • Tutor Mode</h2>
+                                <p class="text-sm text-zinc-400">I will ask you questions too. Try saying "open wikipedia.org"</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Tutor mode toggle -->
+                        <button onclick="startTutorMode()" 
+                                class="flex items-center gap-x-2 px-6 py-3 bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-semibold rounded-3xl text-sm hover:shadow-cyan-500/50 hover:shadow-xl">
+                            <span class="text-xl">🎓</span>
+                            START TUTOR SESSION
+                        </button>
+                    </div>
+
+                    <!-- Messages -->
+                    <div id="chat-messages" class="flex-1 overflow-y-auto space-y-6 pr-4 mb-6 custom-scroll">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Input area -->
+                    <div class="flex items-center gap-x-4 bg-zinc-800 rounded-3xl p-2">
+                        <button onclick="startVoiceInput()" 
+                                class="w-12 h-12 flex items-center justify-center text-2xl hover:bg-zinc-700 rounded-2xl flex-shrink-0">
+                            🎤
+                        </button>
+                        
+                        <input id="chat-input" 
+                               onkeydown="if(event.key === 'Enter') sendChatMessage()"
+                               type="text" 
+                               placeholder="Type here or speak... (e.g. open youtube.com or ask me anything)"
+                               class="flex-1 bg-transparent outline-none px-5 text-lg placeholder-zinc-400">
+                        
+                        <button onclick="sendChatMessage()" 
+                                class="px-8 py-4 bg-cyan-400 hover:bg-cyan-300 text-black font-semibold rounded-3xl flex items-center gap-x-2">
+                            SEND
+                            <span class="text-xl">→</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 1: WEB BROWSER -->
+            <div id="tab-1" class="main-content hidden flex-1 flex flex-col p-8">
+                <div class="bg-zinc-900 rounded-3xl flex-1 flex flex-col overflow-hidden shadow-2xl">
+                    <!-- Browser toolbar -->
+                    <div class="bg-zinc-800 px-6 py-4 flex items-center gap-x-4 border-b border-zinc-700">
+                        <button onclick="goBack()" class="text-3xl px-3">←</button>
+                        <button onclick="goForward()" class="text-3xl px-3">→</button>
+                        
+                        <div class="flex-1 flex items-center bg-white/10 rounded-3xl px-6 py-3 text-white">
+                            <span class="text-cyan-400 mr-3">🔒</span>
+                            <input id="url-bar" 
+                                   type="text" 
+                                   value="https://en.wikipedia.org/wiki/Main_Page"
+                                   onkeydown="if(event.key === 'Enter') loadWebPage()"
+                                   class="flex-1 bg-transparent outline-none text-sm font-medium">
+                        </div>
+                        
+                        <button onclick="loadWebPage()" 
+                                class="bg-cyan-400 text-black px-8 py-3 rounded-3xl font-semibold">GO</button>
+                        
+                        <button onclick="openInNewTab()" 
+                                class="px-5 py-3 text-sm border border-white/30 rounded-3xl flex items-center gap-x-2">
+                            Open in new tab
+                            <span class="text-xl">↗</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Iframe browser -->
+                    <div class="flex-1 iframe-container bg-white relative">
+                        <iframe id="web-iframe" 
+                                src="https://en.wikipedia.org/wiki/Main_Page"
+                                class="w-full h-full rounded-b-3xl"
+                                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+                        
+                        <!-- Loading overlay -->
+                        <div id="web-loading" class="hidden absolute inset-0 bg-black/70 flex items-center justify-center text-white text-2xl font-medium">
+                            Loading page...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: DOCUMENT LAB -->
+            <div id="tab-2" class="main-content hidden flex-1 p-8 overflow-auto">
+                <div class="max-w-5xl mx-auto">
+                    <h1 class="text-4xl font-semibold mb-2">Document Lab</h1>
+                    <p class="text-zinc-400 mb-8">Upload any PDF or TXT → AI extracts text → Instant notes + level-based tests</p>
+                    
+                    <!-- Upload zone -->
+                    <div onclick="document.getElementById('file-input').click()" 
+                         id="upload-zone"
+                         class="border-2 border-dashed border-cyan-400/40 hover:border-cyan-400 rounded-3xl p-12 flex flex-col items-center justify-center cursor-pointer bg-zinc-900 mb-8">
+                        <input type="file" id="file-input" accept=".txt,.pdf" class="hidden" onchange="handleFileUpload(event)">
+                        <div class="text-7xl mb-6">📤</div>
+                        <p class="text-2xl font-semibold mb-1">Drop your document here</p>
+                        <p class="text-zinc-400">PDF or TXT supported • Max 10MB</p>
+                        <div class="mt-8 text-xs bg-white/10 text-white px-6 py-3 rounded-3xl flex items-center gap-x-2">
+                            <span>📄</span> Supports lecture notes, research papers, textbooks
+                        </div>
+                    </div>
+
+                    <!-- Document viewer -->
+                    <div id="document-panel" class="hidden bg-zinc-900 rounded-3xl p-8">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 id="uploaded-filename" class="text-2xl font-semibold"></h3>
+                                <p id="doc-stats" class="text-xs text-emerald-400"></p>
+                            </div>
+                            <button onclick="clearDocument()" 
+                                    class="text-red-400 hover:text-red-300 text-sm flex items-center gap-x-1">
+                                ✕ Clear document
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-8">
+                            <!-- Extracted text -->
+                            <div>
+                                <div class="flex justify-between mb-3 text-sm font-medium">
+                                    <span>📝 EXTRACTED TEXT</span>
+                                    <span onclick="copyText()" class="cursor-pointer text-cyan-400">Copy all</span>
+                                </div>
+                                <div id="extracted-text" 
+                                     class="bg-black/60 h-96 overflow-auto p-6 rounded-3xl text-sm leading-relaxed whitespace-pre-wrap font-mono text-zinc-300 custom-scroll"></div>
+                            </div>
+                            
+                            <!-- Notes & Test -->
+                            <div class="space-y-8">
+                                <!-- Notes -->
+                                <div>
+                                    <div class="flex justify-between items-center mb-3">
+                                        <span class="text-sm font-medium">📌 GENERATED NOTES</span>
+                                        <button onclick="generateNotes()" 
+                                                class="text-xs px-5 py-2 bg-white/10 hover:bg-white/20 rounded-3xl">✦ Regenerate Notes</button>
+                                    </div>
+                                    <div id="notes-content" class="bg-zinc-800 rounded-3xl p-6 min-h-[200px] text-sm leading-relaxed"></div>
+                                </div>
+                                
+                                <!-- Test generator -->
+                                <div>
+                                    <div class="flex justify-between items-center mb-3">
+                                        <span class="text-sm font-medium">🧪 TEST ON ASKED LEVEL</span>
+                                    </div>
+                                    <div class="flex gap-x-3 mb-4">
+                                        <select id="test-level" class="bg-zinc-800 text-white px-6 py-3 rounded-3xl text-sm outline-none flex-1">
+                                            <option value="Beginner">Beginner Level</option>
+                                            <option value="Intermediate">Intermediate Level</option>
+                                            <option value="Advanced" selected>Advanced Level</option>
+                                        </select>
+                                        <button onclick="generateTest()" 
+                                                class="bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-semibold px-10 rounded-3xl">GENERATE TEST</button>
+                                    </div>
+                                    
+                                    <div id="test-area" class="bg-zinc-800 rounded-3xl p-6 min-h-[280px]"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind initialization
+        
+        function initTailwind() {
+            return {
+                config(userConfig = {}) {
+                    return {
+                        content: [],
+                        theme: {
+                            extend: {},
+                        },
+                        plugins: [],
+                        ...userConfig,
+                    }
+                },
+                theme: {
+                    extend: {},
+                },
+            }
+        }
+        
+        // Global variables
+        let currentTab = 0
+        let currentDocText = ''
+        let currentDocName = ''
+        let chatHistory = []
+        let pdfjsLib = null
+        
+        // Initialize PDF.js
+        function initPDFJS() {
+            pdfjsLib = window['pdfjsLib']
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+            console.log('%c✅ PDF.js ready for document reading', 'color:#00d4ff;font-weight:600')
+        }
+        
+        // Switch between tabs
+        function switchTab(tabIndex) {
+            currentTab = tabIndex
+            
+            // Hide all tabs
+            document.querySelectorAll('.main-content').forEach(tab => tab.classList.add('hidden'))
+            
+            // Show selected
+            const targetTab = document.getElementById(`tab-${tabIndex}`)
+            if (targetTab) targetTab.classList.remove('hidden')
+            
+            // Update active nav styles
+            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active-tab', 'bg-zinc-800', 'text-cyan-400'))
+            const activeNav = document.getElementById(`nav-tab-${tabIndex}`)
+            if (activeNav) activeNav.classList.add('active-tab', 'bg-zinc-800', 'text-cyan-400')
+            
+            // Update sidebar
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('bg-zinc-800', 'text-cyan-400'))
+            const activeSidebar = document.getElementById(`sidebar-${tabIndex}`)
+            if (activeSidebar) activeSidebar.classList.add('bg-zinc-800', 'text-cyan-400')
+        }
+
+      
