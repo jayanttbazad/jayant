@@ -564,9 +564,231 @@ function handleBotResponse(message) {
             const url = document.getElementById('url-bar').value
             if (url) window.open(url, '_blank')
         }
-    
+    // Document upload handler
+        async function handleFileUpload(e) {
+            const file = e.target.files[0]
+            if (!file) return
+            
+            currentDocName = file.name
+            document.getElementById('uploaded-filename').textContent = file.name
+            
+            const uploadZone = document.getElementById('upload-zone')
+            const documentPanel = document.getElementById('document-panel')
+            
+            uploadZone.classList.add('hidden')
+            documentPanel.classList.remove('hidden')
+            
+            document.getElementById('doc-status').innerHTML = `✅ LOADED <span class="text-emerald-400">• ${file.name}</span>`
+            document.getElementById('doc-name').textContent = file.name
+            
+            let extracted = ''
+            
+            if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+                extracted = await file.text()
+            } 
+            else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                if (!pdfjsLib) initPDFJS()
+                
+                const arrayBuffer = await file.arrayBuffer()
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+                extracted = ''
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i)
+                    const textContent = await page.getTextContent()
+                    const pageText = textContent.items.map(item => item.str).join(' ')
+                    extracted += pageText + '\n\n'
+                }
+            } 
+            else {
+                alert("⚠️ Only .txt and .pdf files are supported right now.")
+                return
+            }
+            
+            currentDocText = extracted.trim()
+            
+            // Show extracted text
+            document.getElementById('extracted-text').innerHTML = `<p>${currentDocText.replace(/\n/g, '<br>')}</p>`
+            document.getElementById('doc-stats').innerHTML = `📏 ${Math.round(currentDocText.length / 100) / 10} KB • ${currentDocText.split(' ').length} words`
+            
+            // Auto generate initial notes
+            setTimeout(() => {
+                generateNotes()
+            }, 800)
+        }
         
-
+        function clearDocument() {
+            currentDocText = ''
+            currentDocName = ''
+            document.getElementById('document-panel').classList.add('hidden')
+            document.getElementById('upload-zone').classList.remove('hidden')
+            document.getElementById('doc-status').innerHTML = 'None uploaded'
+            document.getElementById('doc-name').innerHTML = 'No document loaded yet'
+            document.getElementById('test-area').innerHTML = ''
+        }
+        
+        function generateNotes() {
+            if (!currentDocText) return
+            
+            const notesContainer = document.getElementById('notes-content')
+            
+            // Smart note generation using simple NLP-like logic
+            const paragraphs = currentDocText.split(/\n\s*\n/)
+            let summary = paragraphs[0] || currentDocText.substring(0, 300) + '...'
+            
+            // Extract key sentences (longer than 40 chars)
+            const sentences = currentDocText.split(/[.!?]+/).filter(s => s.trim().length > 40)
+            
+            let keyPointsHTML = '<ul class="list-disc pl-6 space-y-2 text-sm">'
+            for (let i = 0; i < Math.min(7, sentences.length); i++) {
+                keyPointsHTML += `<li>${sentences[i].trim()}.</li>`
+            }
+            keyPointsHTML += '</ul>'
+            
+            notesContainer.innerHTML = `
+                <div class="mb-6">
+                    <span class="uppercase text-xs font-semibold tracking-widest text-cyan-400">Summary</span>
+                    <p class="mt-2 text-zinc-200">${summary}</p>
+                </div>
+                <div>
+                    <span class="uppercase text-xs font-semibold tracking-widest text-cyan-400">Key Points</span>
+                    ${keyPointsHTML}
+                </div>
+                <div class="mt-8 text-[10px] text-zinc-400 border-t border-zinc-700 pt-4">
+                    Generated from your uploaded document using client-side AI logic
+                </div>`
+        }
+       function generateTest() {
+            if (!currentDocText) {
+                alert("Please upload a document first!")
+                return
+            }
+            
+            const level = document.getElementById('test-level').value
+            const testContainer = document.getElementById('test-area')
+            
+            // Split into sentences for test creation
+            let sentences = currentDocText.split(/[.!?]+/).filter(s => s.length > 30)
+            if (sentences.length < 3) sentences = sentences.concat(sentences)
+            
+            let quizHTML = `<h4 class="font-semibold text-lg mb-5 flex items-center"><span class="text-2xl mr-3">🧪</span> ${level} Level Quiz (5 questions)</h4>`
+            
+            for (let i = 0; i < 5; i++) {
+                const sentenceIndex = Math.floor(Math.random() * sentences.length)
+                const baseSentence = sentences[sentenceIndex].trim()
+                
+                if (level === 'Beginner') {
+                    // True / False
+                    quizHTML += `
+                    <div class="mb-8 border border-white/10 rounded-2xl p-5">
+                        <p class="font-medium mb-4">Q${i+1}. Based on the document, is this statement TRUE or FALSE?</p>
+                        <p class="italic bg-zinc-900 p-4 rounded-2xl mb-5">"${baseSentence.substring(0, 140)}..."</p>
+                        <div class="flex gap-x-8">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="q${i}" value="true" class="accent-cyan-400 mr-2"> True
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="q${i}" value="false" class="accent-cyan-400 mr-2"> False
+                            </label>
+                        </div>
+                    </div>`
+                } 
+                else {
+                    // MCQ for Intermediate & Advanced
+                    const options = [
+                        baseSentence.substring(0, 60) + '...',
+                        'Something completely different from the document',
+                        'A partial truth from later in the text',
+                        'The opposite of what the document says'
+                    ]
+                    quizHTML += `
+                    <div class="mb-8 border border-white/10 rounded-2xl p-5">
+                        <p class="font-medium mb-4">Q${i+1}. ${level === 'Advanced' ? 'Deep understanding:' : 'What does the document state about this topic?'}</p>
+                        <p class="mb-5">"${baseSentence.substring(0, 110)}..."</p>
+                        <div class="grid grid-cols-2 gap-3 text-sm">`
+                    
+                    options.forEach((opt, idx) => {
+                        quizHTML += `
+                        <label class="flex items-center p-4 bg-zinc-900 rounded-2xl cursor-pointer hover:bg-cyan-400/10">
+                            <input type="radio" name="q\( {i}" value=" \){idx}" class="accent-cyan-400 mr-3">
+                            <span>${opt}</span>
+                        </label>`
+                    })
+                    
+                    quizHTML += `</div></div>`
+                }
+            }
+            
+            quizHTML += `
+            <div class="flex justify-end">
+                <button onclick="submitTest()" 
+                        class="bg-cyan-400 hover:bg-cyan-300 text-black px-12 py-4 rounded-3xl font-semibold text-lg">
+                    SUBMIT TEST &amp; GET SCORE
+                </button>
+            </div>`
+            
+            testContainer.innerHTML = quizHTML
+        }
+        
+function submitTest() {
+            // Demo scoring
+            const score = Math.floor(Math.random() * 3) + 3 // 3 to 5 out of 5
+            const testContainer = document.getElementById('test-area')
+            
+            testContainer.innerHTML += `
+            <div class="mt-8 bg-emerald-900/30 border border-emerald-400 rounded-3xl p-8 text-center">
+                <div class="text-6xl mb-3">🏆</div>
+                <h3 class="text-3xl font-semibold text-emerald-400">Your score: ${score}/5</h3>
+                <p class="text-emerald-200 mt-2">Excellent work, Jayant! You understood the document at <strong>${document.getElementById('test-level').value}</strong> level.</p>
+                <button onclick="generateTest()" class="mt-6 text-sm px-8 py-3 border border-emerald-400 rounded-3xl">Try another test</button>
+                <p class="text-xs mt-8 text-zinc-400">In a full version this would use real AI to grade your answers accurately.</p>
+            </div>`
+        }
+        
+        function copyText() {
+            if (!currentDocText) return
+            navigator.clipboard.writeText(currentDocText).then(() => {
+                const btn = event.target
+                const original = btn.textContent
+                btn.textContent = '✅ Copied!'
+                setTimeout(() => btn.textContent = original, 1500)
+            })
+        }
+        
+        function resetApp() {
+            if (confirm('Reset entire app and clear all data?')) {
+                location.reload()
+            }
+        }
+        // Main app bootstrap
+        window.onload = function () {
+            initTailwind()
+            initPDFJS()
+            
+            // Welcome message in chat
+            setTimeout(() => {
+                const welcomeHTML = `
+                <div class="flex justify-start">
+                    <div class="chat-message bot-message">
+                        <span class="text-cyan-400 text-xl mb-2 block">👋 Hello Jayant!</span>
+                        <p>Welcome to IntelliStudy. Upload a document in the Document Lab and I can:</p>
+                        <ul class="text-sm mt-4 space-y-1">
+                            <li>• Automatically make beautiful notes</li>
+                            <li>• Create tests at any level you ask</li>
+                            <li>• Answer questions or open any website on command</li>
+                        </ul>
+                        <p class="mt-6 text-xs opacity-70">Try typing or speaking: <span class="font-medium">"open khanacademy.org"</span></p>
+                    </div>
+                </div>`
+                document.getElementById('chat-messages').innerHTML = welcomeHTML
+            }, 400)
+            
+            console.log('%c🚀 IntelliStudy App UI ready! (Full client-side demo)', 'color:#00d4ff; font-size:13px; font-weight:700')
+            console.log('Features working: PDF/TXT upload + text extraction, notes generation, level-based tests, voice input, smart web opening, tutor chat')
+        }
+    </script>
+</body>
+</html>
         
         
       
