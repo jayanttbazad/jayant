@@ -396,4 +396,177 @@
             if (activeSidebar) activeSidebar.classList.add('bg-zinc-800', 'text-cyan-400')
         }
 
+        // Chat system
+        function addMessage(text, isUser) {
+            const messagesContainer = document.getElementById('chat-messages')
+            
+            const messageHTML = `
+            <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+                <div class="chat-message ${isUser ? 'user-message' : 'bot-message'}">
+                    ${isUser ? '' : '<span class="text-cyan-400 text-xl mb-2 block">🤖</span>'}
+                    <p class="text-base">${text}</p>
+                </div>
+            </div>`
+            
+            messagesContainer.innerHTML += messageHTML
+            messagesContainer.scrollTop = messagesContainer.scrollHeight
+            
+            chatHistory.push({ text, isUser })
+        }
+        
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input')
+            const message = input.value.trim()
+            
+            if (!message) return
+            
+            addMessage(message, true)
+            input.value = ''
+            
+            // Simulate thinking
+            setTimeout(() => {
+                handleBotResponse(message)
+            }, 600)
+        }
+function handleBotResponse(message) {
+            const lower = message.toLowerCase()
+            
+            // Special command: open web
+            if (lower.includes('open ') || lower.includes('go to ')) {
+                let urlPart = message.split('open ')[1] || message.split('go to ')[1] || ''
+                urlPart = urlPart.trim()
+                
+                if (!urlPart.startsWith('http')) {
+                    if (urlPart.includes('.')) {
+                        urlPart = 'https://' + urlPart
+                    } else {
+                        urlPart = 'https://www.google.com/search?q=' + encodeURIComponent(urlPart)
+                    }
+                }
+                
+                addMessage(`🔥 Opening <span class="underline">${urlPart}</span> in new tab...`, false)
+                
+                // Switch to web tab and load
+                setTimeout(() => {
+                    switchTab(1)
+                    document.getElementById('url-bar').value = urlPart
+                    loadWebPage(urlPart)
+                }, 1200)
+                
+                return
+            }
+            
+            // Tutor asks back
+            const tutorReplies = [
+                "Great point! Now let me ask you: What do you think is the most important takeaway?",
+                "Interesting. Question for you → Can you explain this concept in your own words?",
+                "Got it! Here's a quick test question: True or False — ",
+                "Thanks! Would you like me to generate notes or a quiz on this topic?",
+                "Perfect. Let me challenge you: How would you apply this in real life?"
+            ]
+            
+            const randomReply = tutorReplies[Math.floor(Math.random() * tutorReplies.length)]
+            addMessage(randomReply, false)
+            
+            // Occasionally ask to upload doc if in document context
+            if (currentDocText && Math.random() > 0.7) {
+                setTimeout(() => {
+                    addMessage("💡 I see you have a document loaded. Want me to make a test from it?", false)
+                }, 2500)
+            }
+        }
+        // Start tutor mode (app proactively asks questions)
+        function startTutorMode() {
+            const messagesContainer = document.getElementById('chat-messages')
+            messagesContainer.innerHTML = ''
+            chatHistory = []
+            
+            addMessage("👋 Hi Jayant! I'm your personal tutor. Today I'll ask you questions to test your knowledge.", false)
+            
+            setTimeout(() => {
+                addMessage("Question 1: What topic would you like to learn or be tested on today?", false)
+            }, 800)
+            
+            // Switch to chat tab if not already
+            switchTab(0)
+        }
+        
+        // Voice input using Web Speech API
+        function startVoiceInput() {
+            if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
+                alert("🎤 Your browser doesn't support voice input. Try Chrome!")
+                return
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+            const recognition = new SpeechRecognition()
+            
+            recognition.lang = 'en-IN'
+            recognition.interimResults = false
+            
+            recognition.onstart = () => {
+                const micButton = document.querySelector('#chat-input').parentElement.querySelector('button')
+                if (micButton) micButton.style.color = '#00d4ff'
+                console.log('🎤 Listening...')
+            }
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript
+                document.getElementById('chat-input').value = transcript
+                sendChatMessage()
+            }
+            
+            recognition.onerror = (event) => {
+                console.error('Voice error:', event)
+                alert('Voice recognition failed. Try typing instead.')
+            }
+            
+            recognition.onend = () => {
+                const micButton = document.querySelector('#chat-input').parentElement.querySelector('button')
+                if (micButton) micButton.style.color = ''
+            }
+            
+            recognition.start()
+        }
+        // Web browser functions
+        function loadWebPage(customUrl = null) {
+            const urlBar = document.getElementById('url-bar')
+            let url = customUrl || urlBar.value.trim()
+            
+            if (!url) return
+            
+            if (!url.startsWith('http')) url = 'https://' + url
+            
+            const loading = document.getElementById('web-loading')
+            loading.classList.remove('hidden')
+            
+            const iframe = document.getElementById('web-iframe')
+            
+            iframe.onload = () => {
+                loading.classList.add('hidden')
+            }
+            
+            iframe.src = url
+            urlBar.value = url
+        }
+        
+        function goBack() {
+            const iframe = document.getElementById('web-iframe')
+            if (iframe.contentWindow) iframe.contentWindow.history.back()
+        }
+        
+        function goForward() {
+            const iframe = document.getElementById('web-iframe')
+            if (iframe.contentWindow) iframe.contentWindow.history.forward()
+        }
+        
+        function openInNewTab() {
+            const url = document.getElementById('url-bar').value
+            if (url) window.open(url, '_blank')
+        }
+    
+        
+
+        
+        
       
